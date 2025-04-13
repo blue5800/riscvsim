@@ -55,10 +55,10 @@ int main(int argc, char *argv[]) {
 			std::cout << "NOP ends the program for now :D" << std::endl;
 			break;
 		}
+		// i type instructions
 		else if (opcode == 0b0010011){
+
 			uint8_t funct3 = get_funct3(cur_instruction);
-			if (funct3 == 0b000){
-			//ADDI
 			int16_t imm = get_imm(cur_instruction);
 			uint8_t rs1 = get_rs1(cur_instruction);
 			uint8_t rd = get_rd(cur_instruction);
@@ -68,13 +68,37 @@ int main(int argc, char *argv[]) {
 				exit_code = 1;
 				break;
 			}
-			set_register(rd, rs1_val.value() + imm);
-			}
-			else{
-			std::cout << "Unknown funct3 " << (int)funct3 << std::endl;
-			exit_code = 1;
-			break;
-			}
+			switch (funct3){
+				// addi
+				case 0b000:
+					set_register(rd, rs1_val.value() + imm);
+					continue;
+				// slti
+				case 0b010:
+					set_register(rd, (int) rs1_val.value() < (int) imm ? 1 : 0);
+					continue;
+				// sltiu
+				case 0b011:
+					set_register(rd, (unsigned int) rs1_val.value() < (unsigned int) imm ? 1 : 0);
+					continue;
+				//andi
+				case 0b111:
+					set_register(rd, rs1_val.value() & imm);
+					continue;
+				// ori
+				case 0b110:
+					set_register(rd, rs1_val.value() | imm);
+					continue;
+				// xori
+				case 0b100:
+					set_register(rd, rs1_val.value() ^ imm);
+					continue;
+				default :
+					std::cout << "Unknown funct3" << std::endl;
+					exit_code = 1;
+					break;
+
+			}	
 		}
 		else{
 			std::cout << "Unknown opcode" << std::endl;
