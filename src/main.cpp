@@ -22,11 +22,17 @@ uint8_t get_rs1(int ins){
 int16_t get_imm(int ins){
 	return (ins >> 20) & 0xFFF;
 }
+
+uint32_t get_Uimm(int ins){
+	return (ins >> 12) & 0xFFFFF;
+}
+
 int main(int argc, char *argv[]) {
 	//for now we're not using the args.
 	int exit_code = 0;
 	char memory[1024] = {0}; // Memory
 	//addi format is [imm (12 bits) | rs (5 bits) | funct 3 000 | rd (5 bits) | opcode 0010011]
+
 	int instruction1 = 0b01000000000100101000001010010011;
 	int instruction2 = 0b10101010100100101110001010010011;
 	int instruction3 = 0b00000000001100101001001010010011;
@@ -51,8 +57,6 @@ int main(int argc, char *argv[]) {
 			exit_code = 1;
 			break;
 		}
-
-		next_instruction();
 
 		cur_instruction = *(int *)(memory + cur_addr);
 		uint8_t opcode = get_opcode(cur_instruction);
@@ -79,27 +83,38 @@ int main(int argc, char *argv[]) {
 				// addi
 				case 0b000:
 					set_register(rd, rs1_val.value() + imm);
-					continue;
+					goto inc_pc;
+					//continue;
 				// slti
 				case 0b010:
 					set_register(rd, (int) rs1_val.value() < (int) imm ? 1 : 0);
-					continue;
+					goto inc_pc;
+
+					//continue;
 				// sltiu
 				case 0b011:
 					set_register(rd, (unsigned int) rs1_val.value() < (unsigned int) imm ? 1 : 0);
-					continue;
+					goto inc_pc;
+
+					//continue;
 				//andi
 				case 0b111:
 					set_register(rd, rs1_val.value() & imm);
-					continue;
+					goto inc_pc;
+
+					//continue;
 				// ori
 				case 0b110:
 					set_register(rd, rs1_val.value() | imm);
-					continue;
+					goto inc_pc;
+
+					//continue;
 				// xori
 				case 0b100:
 					set_register(rd, rs1_val.value() ^ imm);
-					continue;
+					goto inc_pc;
+
+					//continue;
 				// slli
 				case 0b001 :
 					if (imm < 0 || imm > 31){
@@ -108,7 +123,8 @@ int main(int argc, char *argv[]) {
 						break;
 					}
 					set_register(rd, rs1_val.value() << imm);
-					continue;
+					goto inc_pc;
+					//continue;
 				// srli or srai
 				case 0b101:
 					//special case: we need to consider the funct7, which will be the upper 7 bits of the immediate
@@ -120,6 +136,7 @@ int main(int argc, char *argv[]) {
 							break;
 						}
 						set_register(rd, (int) rs1_val.value() >> (imm & 0b11111));
+						goto inc_pc;
 					}
 					else{
 						// srli
@@ -129,22 +146,49 @@ int main(int argc, char *argv[]) {
 							break;
 						}
 						set_register(rd, (unsigned int) rs1_val.value() >> imm);
+						goto inc_pc;
 					}
-					continue;
+					//continue;
 				default :
 					std::cout << "Unknown funct3" << std::endl;
 					exit_code = 1;
 					break;
-
 			}	
 		}
+		else if (opcode == 0b0110111){
+			// lui
+			uint8_t rd = get_rd(cur_instruction);
+			uint32_t Uimm = get_Uimm(cur_instruction);
+			set_register(rd, Uimm << 12);
+			goto inc_pc;
+			//continue;
+		}
+		else if (opcode == 0b0010111){
+			// auipc
+			uint8_t rd = get_rd(cur_instruction);
+			uint32_t Uimm = get_Uimm(cur_instruction);
+			set_register(rd, get_pc() + (Uimm << 12));
+			goto inc_pc;
+
+			//continue;
+		}
+		else if (opcode == 0b1101111){
+			// jal
+			uint8_t rd = get_rd(cur_instruction);
+			int32_t Uimm = get_Uimm(cur_instruction);
+			set_register(rd, get_pc() + 4);
+			pc_jmp(Uimm << 1);
+			goto inc_pc;
+
+		}
+
 		else{
 			std::cout << "Unknown opcode" << std::endl;
 			exit_code = 1;
 			break;
-		
 		}
-
+inc_pc:
+		next_instruction();
 	}
 	
 	print_registers();

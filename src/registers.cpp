@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <map>
 #include <iostream>
-
+#include <iomanip>
 unsigned int registers[32] = {0}; // General purpose registers
 unsigned int pc = 0; // Program counter
 
@@ -85,9 +85,9 @@ void next_instruction(){
 
 void print_registers(){
 	for(auto const &pair : abi_to_reg){
-		std::cout << pair.first << ": " << registers[pair.second] << std::endl;
+		std::cout << pair.first << ": 0x" << std::hex << std::setw(8) << std::setfill('0') << registers[pair.second] << std::endl;
 	}
-	std::cout << "PC: " << pc << std::endl;
+	std::cout << "PC: 0x" << std::hex << std::setw(8) << std::setfill('0') << pc << std::endl;
 }
 
 
