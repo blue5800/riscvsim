@@ -9,6 +9,10 @@ uint8_t get_opcode(int ins){
 uint8_t get_funct3(int ins){
 	return (ins >> 12) & 0b111;
 }
+
+uint8_t get_funct7(int ins){
+	return (ins >> 25) & 0b1111111;
+}
 uint8_t get_rd(int ins){
 	return (ins >> 7) & 0b11111;
 }
@@ -23,12 +27,14 @@ int main(int argc, char *argv[]) {
 	int exit_code = 0;
 	char memory[1024] = {0}; // Memory
 	//addi format is [imm (12 bits) | rs (5 bits) | funct 3 000 | rd (5 bits) | opcode 0010011]
-	int instruction = 0b01000000000100101000001010010011;
-	*(int *)(memory + 0) = instruction;
-	*(int *)(memory + 4) = instruction;
-	*(int *)(memory + 8) = instruction;
-	*(int *)(memory + 12) = instruction;
-	*(int *)(memory + 16) = instruction;
+	int instruction1 = 0b01000000000100101000001010010011;
+	int instruction2 = 0b10101010100100101110001010010011;
+	int instruction3 = 0b00000000001100101001001010010011;
+	*(int *)(memory + 0) = instruction1;
+	*(int *)(memory + 4) = instruction2;
+	*(int *)(memory + 8) = instruction1;
+	*(int *)(memory + 12) = instruction1;
+	*(int *)(memory + 16) = instruction3;
 
 	init_registers();
 	
@@ -52,7 +58,7 @@ int main(int argc, char *argv[]) {
 		uint8_t opcode = get_opcode(cur_instruction);
 
 		if (opcode == 0){
-			std::cout << "NOP ends the program for now :D" << std::endl;
+			std::cout << "opcode 0 ends the program for now :D" << std::endl;
 			break;
 		}
 		// i type instructions
@@ -62,6 +68,7 @@ int main(int argc, char *argv[]) {
 			int16_t imm = get_imm(cur_instruction);
 			uint8_t rs1 = get_rs1(cur_instruction);
 			uint8_t rd = get_rd(cur_instruction);
+
 			std::optional<unsigned int> rs1_val = get_register(rs1);
 			if (!rs1_val.has_value()){
 				std::cout << "Invalid rs1" << std::endl;
@@ -92,6 +99,37 @@ int main(int argc, char *argv[]) {
 				// xori
 				case 0b100:
 					set_register(rd, rs1_val.value() ^ imm);
+					continue;
+				// slli
+				case 0b001 :
+					if (imm < 0 || imm > 31){
+						std::cout << "Invalid immediate for slli" << std::endl;
+						exit_code = 1;
+						break;
+					}
+					set_register(rd, rs1_val.value() << imm);
+					continue;
+				// srli or srai
+				case 0b101:
+					//special case: we need to consider the funct7, which will be the upper 7 bits of the immediate
+					if(imm & 0b010000000000){
+						// srai
+						if ((imm & 0b11111) < 0 || (imm & 0b11111)  > 31){
+							std::cout << "Invalid immediate for srai" << std::endl;
+							exit_code = 1;
+							break;
+						}
+						set_register(rd, (int) rs1_val.value() >> (imm & 0b11111));
+					}
+					else{
+						// srli
+						if (imm < 0 || imm > 31){
+							std::cout << "Invalid immediate for srli" << std::endl;
+							exit_code = 1;
+							break;
+						}
+						set_register(rd, (unsigned int) rs1_val.value() >> imm);
+					}
 					continue;
 				default :
 					std::cout << "Unknown funct3" << std::endl;
