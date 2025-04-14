@@ -182,6 +182,23 @@ int main(int argc, char *argv[]) {
 
 		}
 
+		else if (opcode == 0b1100111){
+			//jalr 
+			uint8_t rd = get_rd(cur_instruction);
+			uint8_t rs1 = get_rs1(cur_instruction);
+			int32_t imm = get_imm(cur_instruction);
+			std::optional<unsigned int> rs1_val = get_register(rs1);
+			if (!rs1_val.has_value()){
+				std::cout << "Invalid rs1" << std::endl;
+				exit_code = 1;
+				break;
+			}
+			set_register(rd, get_pc() + 4);
+			pc_jmp(0);
+			pc_jmp((rs1_val.value() + imm) & 0xFFFFFFFE);
+			goto inc_pc;
+		}
+
 		else{
 			std::cout << "Unknown opcode" << std::endl;
 			exit_code = 1;
